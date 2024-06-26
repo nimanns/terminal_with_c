@@ -1,0 +1,111 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+#define SERVER_ADDR "127.0.0.1"
+
+void send_request(const char *request) {
+    int client_socket;
+    struct sockaddr_in server_addr;
+    char buffer[BUFFER_SIZE];
+    int bytes_read;
+
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket < 0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDR);
+
+    if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connect");
+        close(client_socket);
+        exit(EXIT_FAILURE);
+    }
+
+    send(client_socket, request, strlen(request), 0);
+    bytes_read = read(client_socket, buffer, BUFFER_SIZE - 1);
+    if (bytes_read < 0) {
+        perror("read");
+        close(client_socket);
+        return;
+    }
+
+    buffer[bytes_read] = '\0';
+    printf("Response:\n%s\n", buffer);
+
+    close(client_socket);
+}
+
+void test_get_posts() {
+    const char *get_request =
+        "GET /posts HTTP/1.1\r\n"
+        "Host: " SERVER_ADDR "\r\n"
+        "Connection: close\r\n"
+        "\r\n";
+
+    printf("Sending GET /posts request...\n");
+    send_request(get_request);
+}
+
+void test_post_posts() {
+    const char *post_request =
+        "POST /posts HTTP/1.1\r\n"
+        "Host: " SERVER_ADDR "\r\n"
+        "Content-Type: application/json\r\n"
+        "Connection: close\r\n"
+        "Content-Length: 0\r\n"
+        "\r\n";
+
+    printf("Sending POST /posts request...\n");
+    send_request(post_request);
+}
+
+void test_put_post(int index) {
+    char put_request[BUFFER_SIZE];
+    snprintf(put_request, BUFFER_SIZE,
+        "PUT /posts/%d HTTP/1.1\r\n"
+        "Host: " SERVER_ADDR "\r\n"
+        "Content-Type: application/json\r\n"
+        "Connection: close\r\n"
+        "Content-Length: 0\r\n"
+        "\r\n", index);
+
+    printf("Sending PUT /posts/%d request...\n", index);
+    send_request(put_request);
+}
+
+void test_delete_post(int index) {
+    char delete_request[BUFFER_SIZE];
+    snprintf(delete_request, BUFFER_SIZE,
+        "DELETE /posts/%d HTTP/1.1\r\n"
+        "Host: " SERVER_ADDR "\r\n"
+        "Connection: close\r\n"
+        "\r\n", index);
+
+    printf("Sending DELETE /posts/%d request...\n", index);
+    send_request(delete_request);
+}
+
+int main() {
+    test_get_posts();
+    sleep(1);
+    test_post_posts();
+    sleep(1);
+    test_get_posts();
+    sleep(1);
+    test_put_post(0);
+    sleep(1);
+    test_get_posts();
+    sleep(1);
+    test_get_posts();
+
+    return 0;
+}
