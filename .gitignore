@@ -1,3 +1,6 @@
 *.out
 *.exe
 *.wav
+include/
+lib/
+*.dll
