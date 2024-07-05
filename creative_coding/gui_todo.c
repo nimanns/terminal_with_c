@@ -31,8 +31,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR args, int ncmdsho
     if (!RegisterClassW(&wc))
         return -1;
 
-    HWND hWnd = CreateWindowW(L"ToDoListClass", L"To-Do List", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                              100, 100, 400, 500, NULL, NULL, NULL, NULL);
+    HWND hWnd = CreateWindowExW(
+        0,
+        L"ToDoListClass",
+        L"To-Do List",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE,
+        100, 100, 400, 500,
+        NULL, NULL, hInst, NULL
+    );
 
     MSG msg = {0};
     while (GetMessage(&msg, NULL, 0, 0))
@@ -78,17 +84,39 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 
 void AddControlsToWindow(HWND hWnd)
 {
-    hListBox = CreateWindowW(L"LISTBOX", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | LBS_NOTIFY,
-                             20, 20, 340, 300, hWnd, (HMENU)ID_LISTBOX, NULL, NULL);
+    HINSTANCE hInst = GetModuleHandle(NULL);
 
-    hEdit = CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | WS_BORDER,
-                          20, 330, 340, 30, hWnd, (HMENU)ID_EDIT, NULL, NULL);
+    hListBox = CreateWindowExW(
+        WS_EX_CLIENTEDGE,
+        L"LISTBOX", L"",
+        WS_CHILD | WS_VISIBLE | LBS_NOTIFY,
+        20, 20, 340, 300,
+        hWnd, (HMENU)ID_LISTBOX, hInst, NULL
+    );
 
-    hAddButton = CreateWindowW(L"BUTTON", L"Add", WS_VISIBLE | WS_CHILD,
-                               20, 370, 100, 30, hWnd, (HMENU)ID_ADD_BUTTON, NULL, NULL);
+    hEdit = CreateWindowExW(
+        WS_EX_CLIENTEDGE,
+        L"EDIT", L"",
+        WS_CHILD | WS_VISIBLE,
+        20, 330, 340, 30,
+        hWnd, (HMENU)ID_EDIT, hInst, NULL
+    );
 
-    hRemoveButton = CreateWindowW(L"BUTTON", L"Remove", WS_VISIBLE | WS_CHILD,
-                                  130, 370, 100, 30, hWnd, (HMENU)ID_REMOVE_BUTTON, NULL, NULL);
+    hAddButton = CreateWindowExW(
+        0,
+        L"BUTTON", L"Add",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        20, 370, 100, 30,
+        hWnd, (HMENU)ID_ADD_BUTTON, hInst, NULL
+    );
+
+    hRemoveButton = CreateWindowExW(
+        0,
+        L"BUTTON", L"Remove",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        130, 370, 100, 30,
+        hWnd, (HMENU)ID_REMOVE_BUTTON, hInst, NULL
+    );
 }
 
 void AddItem(HWND hWnd)
@@ -137,14 +165,12 @@ void LoadList(HWND hWnd)
     FILE *file = fopen(FILENAME, "r");
     if (file == NULL)
     {
-        // File doesn't exist, which is fine for a new user
         return;
     }
 
     char item[MAX_ITEM_LENGTH];
     while (fgets(item, sizeof(item), file))
     {
-        // Remove newline character
         item[strcspn(item, "\n")] = 0;
         SendMessageA(hListBox, LB_ADDSTRING, 0, (LPARAM)item);
     }
