@@ -63,7 +63,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
-                case 1: // Browse button
+                case 1:
                     {
                         OPENFILENAME ofn;
                         ZeroMemory(&ofn, sizeof(ofn));
@@ -77,19 +77,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
                         if (GetOpenFileName(&ofn)) {
                             MessageBox(hwnd, szFileName, "File Selected", MB_OK);
-                        }
+                        } else {
+														MessageBox(hwnd, "No files selected.", "No files selected", MB_OK);
+												}
                     }
                     break;
-                case 2: // Play button
+                case 2:
                     if (strlen(szFileName) > 0) {
                         if (!PlaySound(szFileName, NULL, SND_FILENAME | SND_ASYNC)) {
                             MessageBox(hwnd, "Error playing the file", "Error", MB_OK | MB_ICONERROR);
+														printf("error 1");
                         }
                     } else {
                         MessageBox(hwnd, "Please select a WAV file first", "Error", MB_OK | MB_ICONINFORMATION);
+												printf("error 2");
                     }
                     break;
-                case 3: // Stop button
+                case 3: 
                     PlaySound(NULL, NULL, 0);
                     break;
             }
