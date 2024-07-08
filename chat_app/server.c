@@ -31,7 +31,7 @@ int main(void)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
-	i_result = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
+	i_result = getaddrinfo("127.0.0.1", DEFAULT_PORT, &hints, &result);
 	if(i_result != 0)
 	{
 		printf("getaddrinfo failed: %d\n", i_result);
@@ -58,7 +58,21 @@ int main(void)
         WSACleanup();
         return 1;
 	}
-	printf("listening on 127.0.0.1:%d", DEFAULT_PORT);
+
+
+	char host[NI_MAXHOST];
+	char service[NI_MAXSERV];
+	ZeroMemory(host, NI_MAXHOST);
+	ZeroMemory(service, NI_MAXSERV);
+
+	if (getnameinfo((struct sockaddr *)result->ai_addr, (socklen_t)result->ai_addrlen, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV) == 0)
+	{
+			printf("Listening on %s:%s\n", host, service);
+	}
+	else
+	{
+			printf("Unable to get IP address\n");
+	}
 
 	freeaddrinfo(result);
 
