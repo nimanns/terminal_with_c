@@ -101,12 +101,14 @@ int main(void)
                     }
                 } else {
                     char recv_buf[DEFAULT_BUFFER_LENGTH];
+										memset(recv_buf, 0, DEFAULT_BUFFER_LENGTH);
                     int recv_result = recv(current_socket, recv_buf, DEFAULT_BUFFER_LENGTH, 0);
                     if (recv_result > 0) {
                         printf("Bytes received: %d\n", recv_result);
                         for (int j = 0; j < client_count; j++) {
                             if (clients[j].socket != current_socket) {
 																char message_with_name[DEFAULT_BUFFER_LENGTH + 200];
+																memset(message_with_name, 0, DEFAULT_BUFFER_LENGTH+200);
 																strcat(message_with_name, clients[j].name);
 																strcat(message_with_name, " said: ");
 																strcat(message_with_name, recv_buf);
@@ -114,7 +116,6 @@ int main(void)
                                 if (send_result == SOCKET_ERROR) {
                                     printf("send failed: %d\n", WSAGetLastError());
                                 }
-																memset(message_with_name, 0, strlen(message_with_name));
                             }
                         }
                     } else if (recv_result == 0) {
