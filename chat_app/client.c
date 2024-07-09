@@ -34,8 +34,7 @@ int main(int argc, char* argv[])
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	i_result = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
-	printf("%d\n",i_result);
-	printf("%ld\n", WSAGetLastError());
+
 	if(i_result != 0) {
 		printf("error in connection");
 		WSACleanup();
@@ -70,35 +69,42 @@ int main(int argc, char* argv[])
 	}
 
 	int recv_buf_len = DEFAULT_BUFFER_LENGTH;
-	const char *send_buf = "test";
+	char send_buf[30];
 	char recv_buf[DEFAULT_BUFFER_LENGTH];
 
-	i_result = send(ConnectSocket, send_buf, (int)strlen(send_buf), 0);
-	if(i_result == SOCKET_ERROR){
-		printf("send failed");
-		closesocket(ConnectSocket);
-		WSACleanup();
-		return 1;
-	}
+	while(1){
+		printf("Type your message:\n");
+		scanf("%s", send_buf);
+		i_result = send(ConnectSocket, send_buf, (int)strlen(send_buf), 0);
 
-	printf("bytes sent: %ld\n", i_result);
+		if(i_result == SOCKET_ERROR){
+			printf("send failed");
+			closesocket(ConnectSocket);
+			WSACleanup();
+			return 1;
+		}
+
+		printf("bytes sent: %ld\n", i_result);
+		
+		do{
+			i_result = recv(ConnectSocket, recv_buf, recv_buf_len, 0);
+			printf("%d\n", i_result);
+			if(i_result > 0){
+				printf("bytes received: %d\n", i_result);
+			}
+			else if(i_result == 0)
+				printf("connection closed\n");
+			else
+				printf("recv failed");
+		}
+		while(i_result > 0);
+	}
 
 	i_result = shutdown(ConnectSocket, SD_SEND);
 	if(i_result == SOCKET_ERROR){
-		printf("shotdown failed");
+		printf("shutdown failed");
 		closesocket(ConnectSocket);
 		WSACleanup();
 		return 1;
 	}
-
-	do{
-		i_result = recv(ConnectSocket, recv_buf, recv_buf_len, 0);
-		if(i_result > 0)
-			printf("bytes received: %d\n", i_result);
-		else if(i_result == 0)
-			printf("connection closed\n");
-		else
-			printf("recv failed");
-	}
-	while(i_result > 0);
 }
