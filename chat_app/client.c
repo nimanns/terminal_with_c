@@ -1,6 +1,12 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+
+#ifndef UNICODE
+#define UNICODE
+#endif
+
+
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -13,10 +19,82 @@
 #define DEFAULT_BUFFER_LENGTH 512
 
 DWORD WINAPI ReceiveThread(LPVOID lpParam);
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+{
+		const wchar_t CLASS_NAME[] = L"Simple Chat App";
+
+		WNDCLASS wc = {};
+
+		wc.lpfnWndProc = WindowProc;
+		wc.hInstance = hInstance;
+		wc.lpszClassName = CLASS_NAME;
+
+		RegisterClass(&wc);
+
+		HWND hwnd = CreateWindowEx(0, CLASS_NAME, L"Chat App", WS_OVERLAPPEDWINDOW, 200, 200, 500, 600, NULL, NULL, hInstance, NULL);
+
+		if(hwnd == NULL) 
+		{
+			return 0;
+		}
+
+		const wchar_t EDITOR_CLASS[] = L"Editor";
+
+		HWND hEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"Default Text", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 10, 10, 200, 60, hwnd, NULL, hInstance, NULL);
+
+
+		ShowWindow(hwnd, nCmdShow);
+		UpdateWindow(hwnd);
+		
+		MSG msg = {};
+		while (GetMessage(&msg, NULL, 0, 0) > 0)
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		return 0;
+}
+
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
+	switch(uMsg)
+	{
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			return 0;
+		case WM_PAINT:
+			{
+				PAINTSTRUCT ps;
+				HDC hdc = BeginPaint(hwnd, &ps);
+
+				FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+
+				EndPaint(hwnd, &ps);
+			}
+			return 0;
+	}
+
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+DWORD WINAPI WindowThread(LPVOID lpParam){
+	HINSTANCE hInstance = GetModuleHandle(NULL);
+	wWinMain(hInstance, NULL, GetCommandLineW(), SW_SHOW);
+	return 0;
+}
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2) {
+		HANDLE hWindowThread = CreateThread(NULL, 0, WindowThread, NULL, 0, NULL);
+		if(hWindowThread == NULL) {
+			printf("failed to create the window\n");
+			return 1;
+		}
+		
+		if (argc != 2) {
         printf("Usage: %s server_ip\n", argv[0]);
         return 1;
     }
@@ -41,6 +119,7 @@ int main(int argc, char* argv[])
 		} else {
 			i_result = getaddrinfo(argv[1], DEFAULT_PORT, &hints, &result);
 		}
+
     if(i_result != 0) {
         printf("getaddrinfo failed: %d\n", i_result);
         WSACleanup();
@@ -102,7 +181,11 @@ int main(int argc, char* argv[])
 
     closesocket(ConnectSocket);
     WSACleanup();
-    return 0;
+    
+		WaitForSingleObject(hWindowThread, INFINITE);
+		CloseHandle(hWindowThread);
+    
+		return 0;
 }
 
 DWORD WINAPI ReceiveThread(LPVOID lpParam)
@@ -126,6 +209,6 @@ DWORD WINAPI ReceiveThread(LPVOID lpParam)
             break;
         }
     }
-
-    return 0;
+		
+		return 0;
 }
