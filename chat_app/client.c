@@ -17,23 +17,24 @@
 #pragma comment(lib, "ws2_32")
 #define DEFAULT_PORT "27015"
 #define DEFAULT_BUFFER_LENGTH 512
+#define IDC_SEND_BUTTON 101
 
 DWORD WINAPI ReceiveThread(LPVOID lpParam);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
 		const wchar_t CLASS_NAME[] = L"Simple Chat App";
 
 		WNDCLASS wc = {};
 
 		wc.lpfnWndProc = WindowProc;
-		wc.hInstance = hInstance;
+		wc.hInstance = h_instance;
 		wc.lpszClassName = CLASS_NAME;
 
 		RegisterClass(&wc);
 
-		HWND hwnd = CreateWindowEx(0, CLASS_NAME, L"Chat App", WS_OVERLAPPEDWINDOW, 200, 200, 500, 600, NULL, NULL, hInstance, NULL);
+		HWND hwnd = CreateWindowEx(0, CLASS_NAME, L"Chat App", WS_OVERLAPPEDWINDOW, 100, 100, 500, 900, NULL, NULL, h_instance, NULL);
 
 		if(hwnd == NULL) 
 		{
@@ -42,13 +43,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
 		const wchar_t EDITOR_CLASS[] = L"Editor";
 
-		HWND hEdit = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"Default Text", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, 10, 10, 200, 60, hwnd, NULL, hInstance, NULL);
+		HWND h_chat_box = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"Test\r\ntest", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOVSCROLL | ES_MULTILINE | WS_VSCROLL | ES_READONLY, 10, 10, 460, 480, hwnd, NULL, h_instance, NULL);
 
 
+		HWND h_message_box = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"TYPE YOUR MESSAGE HERE", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOVSCROLL | ES_MULTILINE | WS_VSCROLL, 10, 480, 460, 200, hwnd, NULL, h_instance, NULL);
 		ShowWindow(hwnd, nCmdShow);
 		UpdateWindow(hwnd);
+
+		HWND h_send_button = CreateWindow(L"BUTTON", L"Send Message", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 690, 460, 50, hwnd, (HMENU)IDC_SEND_BUTTON, h_instance, NULL);
 		
 		MSG msg = {};
+
+		int message_length = GetWindowTextLength(h_message_box);
+		WCHAR* buffer = (WCHAR*)malloc((message_length + 1) * sizeof(WCHAR));
+
+		if(buffer){
+			GetWindowText(h_message_box, buffer, message_length + 1);
+			printf((const char *)buffer);
+			free(buffer);
+		}
+		
 		while (GetMessage(&msg, NULL, 0, 0) > 0)
 		{
 			TranslateMessage(&msg);
@@ -75,14 +89,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 				EndPaint(hwnd, &ps);
 			}
 			return 0;
+		case WM_COMMAND:
+			switch(LOWORD(wParam))
+			{
+				case IDC_SEND_BUTTON:
+					MessageBox(hwnd, L"Clicked", L"Notif", MB_OK);
+					break;
+
+			}
+			break;
 	}
 
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 DWORD WINAPI WindowThread(LPVOID lpParam){
-	HINSTANCE hInstance = GetModuleHandle(NULL);
-	wWinMain(hInstance, NULL, GetCommandLineW(), SW_SHOW);
+	HINSTANCE h_instance = GetModuleHandle(NULL);
+	wWinMain(h_instance, NULL, GetCommandLineW(), SW_SHOW);
 	return 0;
 }
 
