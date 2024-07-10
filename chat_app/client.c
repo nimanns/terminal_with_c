@@ -23,7 +23,7 @@
 
 DWORD WINAPI ReceiveThread(LPVOID lpParam);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-char message_thread[2046];
+WCHAR message_thread[3072];
 
 int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
@@ -46,7 +46,7 @@ int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 
 		const wchar_t EDITOR_CLASS[] = L"Editor";
 
-		HWND h_chat_box = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", (LPCWSTR)message_thread, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOVSCROLL | ES_MULTILINE | WS_VSCROLL | ES_READONLY, 10, 10, 460, 480, hwnd, (HMENU)IDC_CHAT_BOX, h_instance, NULL);
+		HWND h_chat_box = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", message_thread, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOVSCROLL | ES_MULTILINE | WS_VSCROLL | ES_READONLY, 10, 10, 460, 480, hwnd, (HMENU)IDC_CHAT_BOX, h_instance, NULL);
 
 		HWND h_message_box = CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", L"TYPE YOUR MESSAGE HERE", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOVSCROLL | ES_MULTILINE | WS_VSCROLL, 10, 480, 460, 200, hwnd, (HMENU)IDC_MESSAGE_TEXT, h_instance, NULL);
 		ShowWindow(hwnd, nCmdShow);
@@ -90,14 +90,24 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 			switch(LOWORD(wParam))
 			{
 				case IDC_SEND_BUTTON:
+					
 					HWND h_message_box = GetDlgItem(hwnd, IDC_MESSAGE_TEXT);
 					HWND h_chat_box = GetDlgItem(hwnd, IDC_CHAT_BOX);
-					GetWindowText(h_chat_box, (LPWSTR)message_thread, 2046);
-					TCHAR buff[1024];
-					GetWindowText(h_message_box, buff, 1024);
-					strcpy(message_thread, (const char *)buff);
-					SetWindowText(h_chat_box, (LPCWSTR)buff);
-					MessageBox(hwnd, buff, L"Notif", MB_OK);
+					
+					GetWindowTextW(h_chat_box, message_thread, 3071);
+					
+					WCHAR buff[1024];
+					GetWindowTextW(h_message_box, buff, 1024);
+					
+					if (wcslen(message_thread) + wcslen(buff) < 3071) {
+							wcscat_s(message_thread, 3072, buff);
+							wcscat_s(message_thread, 3072, L"\r\n");
+							SetWindowTextW(h_chat_box, message_thread);
+							SetWindowTextW(h_message_box, L"");
+					}
+					else {
+							MessageBoxW(hwnd, L"Message too long!", L"Error", MB_OK);
+					}
 					break;
 			}
 			break;
