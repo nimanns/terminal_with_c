@@ -27,6 +27,7 @@
 DWORD WINAPI ReceiveThread(LPVOID lpParam);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 char* WideCharToChar(const WCHAR* wideString);
+WCHAR* CharToWideChar(const char* narrowString);
 
 WCHAR message_thread[3072];
 int send_message = 0;
@@ -105,8 +106,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 					
 					GetWindowTextW(h_chat_box, message_thread, 3071);
 					
+					
 					WCHAR buff[1024];
 					GetWindowTextW(h_message_box, buff, 1024);
+					if(buff[0] == L'\0'){
+						MessageBoxW(hwnd, L"Please type a message!", L"Error", MB_OK);
+						break;
+					}
 					
 					if (wcslen(message_thread) + wcslen(buff) < 3071) {
 							wcscat_s(message_thread, 3072, buff);
@@ -231,6 +237,7 @@ int main(int argc, char* argv[])
 						goto cleanup;
 					}
 				}
+
 				EnterCriticalSection(&g_cs);
 				if(g_data_ready){
 					if(g_shared_data){
@@ -276,6 +283,7 @@ DWORD WINAPI ReceiveThread(LPVOID lpParam)
         if(i_result > 0){
             recv_buf[i_result] = '\0';
             printf("%s\n", recv_buf);
+
         }
         else if(i_result == 0){
             printf("Server closed the connection\n");
@@ -310,4 +318,32 @@ char* WideCharToChar(const WCHAR* wideString) {
     }
 
     return narrowString;
+}
+
+WCHAR* CharToWideChar(const char* narrowString) {
+    int bufferSize;
+    WCHAR* wideString;
+
+    // Get the required buffer size
+    bufferSize = MultiByteToWideChar(CP_UTF8, 0, narrowString, -1, NULL, 0);
+    if (bufferSize == 0) {
+        // Handle error
+        return NULL;
+    }
+
+    // Allocate the buffer
+    wideString = (WCHAR*)malloc(bufferSize * sizeof(WCHAR));
+    if (wideString == NULL) {
+        // Handle memory allocation failure
+        return NULL;
+    }
+
+    // Perform the conversion
+    if (MultiByteToWideChar(CP_UTF8, 0, narrowString, -1, wideString, bufferSize) == 0) {
+        // Handle error
+        free(wideString);
+        return NULL;
+    }
+
+    return wideString;
 }
