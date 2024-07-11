@@ -28,12 +28,18 @@ DWORD WINAPI ReceiveThread(LPVOID lpParam);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 char* WideCharToChar(const WCHAR* wideString);
 WCHAR* CharToWideChar(const char* narrowString);
+HWND g_hwnd;
 
 WCHAR message_thread[3072];
 int send_message = 0;
 CRITICAL_SECTION g_cs;
 char* g_shared_data = NULL;
 bool g_data_ready = false;
+
+struct ThreadParams {
+    SOCKET ConnectSocket;
+    HWND hwnd;
+};
 
 int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
@@ -53,6 +59,8 @@ int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 		{
 			return 0;
 		}
+
+		g_hwnd = hwnd;
 
 		const wchar_t EDITOR_CLASS[] = L"Editor";
 
@@ -131,8 +139,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 					g_data_ready = true;
 					LeaveCriticalSection(&g_cs);
 					break;
-			}
-			break;
+				}
+				break;
+
+			case WM_USER_DATA:
+				{
+					WCHAR* new_message = (WCHAR*)lParam;
+					HWND h_chat_box = GetDlgItem(hwnd, IDC_CHAT_BOX);
+
+					if(wcslen(message_thread) + wcslen(new_message) < 3071){
+						wcscat_s(message_thread, 3072, new_message);
+						wcscat_s(message_thread, 3072, L"\r\n");
+						SetWindowTextW(h_chat_box, message_thread);
+					} else {
+						MessageBoxW(hwnd, L"Chat history too long!!", L"Error", MB_OK);
+						wcscpy_s(message_thread, 3072, new_message);
+						wcscat_s(message_thread, 3072, L"\r\n");
+						SetWindowTextW(h_chat_box, message_thread);
+					}
+					free(new_message);
+				}
+				return 0;
 	}
 
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -152,6 +179,9 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 		
+		//WaitForSingleObject(hWindowThread, INFINITE);
+		//CloseHandle(hWindowThread);
+
 		if (argc != 2) {
         printf("Usage: %s server_ip\n", argv[0]);
         return 1;
@@ -159,6 +189,10 @@ int main(int argc, char* argv[])
 		
 		InitializeCriticalSection(&g_cs);
 			
+		while (g_hwnd == NULL) {
+        Sleep(100);
+    }
+
     WSADATA wsa_data;
     int i_result;
     i_result = WSAStartup(MAKEWORD(2,2), &wsa_data);
@@ -215,8 +249,11 @@ int main(int argc, char* argv[])
 
     printf("Connected to server\n");
 
+		struct ThreadParams params;
+		params.ConnectSocket = ConnectSocket;
+		params.hwnd = g_hwnd;
 		//thread for message receiving
-    HANDLE h_thread = CreateThread(NULL, 0, ReceiveThread, (LPVOID)ConnectSocket, 0, NULL);
+    HANDLE h_thread = CreateThread(NULL, 0, ReceiveThread, (LPVOID)&params, 0, NULL);
     if (h_thread == NULL) {
         printf("failed to create receive thread\n");
         closesocket(ConnectSocket);
@@ -274,7 +311,10 @@ cleanup:
 
 DWORD WINAPI ReceiveThread(LPVOID lpParam)
 {
-    SOCKET ConnectSocket = (SOCKET)lpParam;
+		struct ThreadParams* params = (struct ThreadParams*)lpParam;
+    SOCKET ConnectSocket = params->ConnectSocket;
+		HWND hwnd = params->hwnd;
+
     char recv_buf[DEFAULT_BUFFER_LENGTH];
     int i_result;
 
@@ -283,6 +323,11 @@ DWORD WINAPI ReceiveThread(LPVOID lpParam)
         if(i_result > 0){
             recv_buf[i_result] = '\0';
             printf("%s\n", recv_buf);
+						
+						WCHAR* wide_msg = CharToWideChar(recv_buf);
+						if(wide_msg){
+							PostMessage(hwnd, WM_USER_DATA, 0, (LPARAM)wide_msg);
+						}
 
         }
         else if(i_result == 0){
