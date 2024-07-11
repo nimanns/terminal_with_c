@@ -14,16 +14,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
 #pragma comment(lib, "ws2_32")
 #define DEFAULT_PORT "27015"
 #define DEFAULT_BUFFER_LENGTH 512
 #define IDC_MESSAGE_TEXT 101
 #define IDC_SEND_BUTTON 102
 #define IDC_CHAT_BOX 103
+#define WM_USER_DATA (WM_USER + 1)
 
 DWORD WINAPI ReceiveThread(LPVOID lpParam);
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+char* WideCharToChar(const WCHAR* wideString);
+
 WCHAR message_thread[3072];
+int send_message = 0;
+CRITICAL_SECTION g_cs;
+char* g_shared_data = NULL;
+bool g_data_ready = false;
 
 int WINAPI wWinMain(HINSTANCE h_instance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
@@ -108,6 +117,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 					else {
 							MessageBoxW(hwnd, L"Message too long!", L"Error", MB_OK);
 					}
+					send_message = 1;
+
+					EnterCriticalSection(&g_cs);
+					if(g_shared_data) free(g_shared_data);
+					g_shared_data = _strdup(WideCharToChar(buff));
+					g_data_ready = true;
+					LeaveCriticalSection(&g_cs);
 					break;
 			}
 			break;
@@ -134,7 +150,9 @@ int main(int argc, char* argv[])
         printf("Usage: %s server_ip\n", argv[0]);
         return 1;
     }
-
+		
+		InitializeCriticalSection(&g_cs);
+			
     WSADATA wsa_data;
     int i_result;
     i_result = WSAStartup(MAKEWORD(2,2), &wsa_data);
@@ -143,6 +161,8 @@ int main(int argc, char* argv[])
         printf("WSAStartup failed: %d\n", i_result);
         return 1;
     }
+
+		MSG msg;
 
     struct addrinfo *result = NULL, *ptr = NULL, hints;
     ZeroMemory(&hints, sizeof(hints));
@@ -200,19 +220,39 @@ int main(int argc, char* argv[])
 
     char send_buf[DEFAULT_BUFFER_LENGTH];
     while(1){
-        printf("Enter message (or 'quit' to exit): ");
-        fgets(send_buf, DEFAULT_BUFFER_LENGTH, stdin);
-        send_buf[strcspn(send_buf, "\n")] = 0;
+        //printf("Enter message (or 'quit' to exit): ");
+        //fgets(send_buf, DEFAULT_BUFFER_LENGTH, stdin);
+        
+				while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)){
+					TranslateMessage(&msg);
+					DispatchMessage(&msg);
 
-        if (strcmp(send_buf, "quit") == 0) {
-            break;
-        }
+					if(msg.message == WM_QUIT){
+						goto cleanup;
+					}
+				}
+				EnterCriticalSection(&g_cs);
+				if(g_data_ready){
+					if(g_shared_data){
+						strcpy(send_buf, g_shared_data);
+						send_buf[strcspn(send_buf, "\n")] = 0;
+						
+						if (strcmp(send_buf, "quit") == 0) {
+								break;
+						}
 
-        i_result = send(ConnectSocket, send_buf, (int)strlen(send_buf), 0);
-        if(i_result == SOCKET_ERROR){
-            printf("send failed: %d\n", WSAGetLastError());
-            break;
-        }
+						i_result = send(ConnectSocket, send_buf, (int)strlen(send_buf), 0);
+						if(i_result == SOCKET_ERROR){
+								printf("send failed: %d\n", WSAGetLastError());
+								break;
+						}
+						free(g_shared_data);
+						g_shared_data = NULL;
+					}
+					g_data_ready = false;
+				}
+				LeaveCriticalSection(&g_cs);
+
     }
 
     closesocket(ConnectSocket);
@@ -220,7 +260,8 @@ int main(int argc, char* argv[])
     
 		WaitForSingleObject(hWindowThread, INFINITE);
 		CloseHandle(hWindowThread);
-    
+cleanup:
+		DeleteCriticalSection(&g_cs);
 		return 0;
 }
 
@@ -247,4 +288,26 @@ DWORD WINAPI ReceiveThread(LPVOID lpParam)
     }
 		
 		return 0;
+}
+
+char* WideCharToChar(const WCHAR* wideString) {
+    int bufferSize;
+    char* narrowString;
+
+    bufferSize = WideCharToMultiByte(CP_UTF8, 0, wideString, -1, NULL, 0, NULL, NULL);
+    if (bufferSize == 0) {
+        return NULL;
+    }
+
+    narrowString = (char*)malloc(bufferSize);
+    if (narrowString == NULL) {
+        return NULL;
+    }
+
+    if (WideCharToMultiByte(CP_UTF8, 0, wideString, -1, narrowString, bufferSize, NULL, NULL) == 0) {
+        free(narrowString);
+        return NULL;
+    }
+
+    return narrowString;
 }
