@@ -89,6 +89,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
+				
+				RECT background_rect;
+				GetClientRect(hwnd, &background_rect);
+				HBRUSH background_brush = CreateSolidBrush(RGB(255,255,255));
+				FillRect(hdc, &background_rect, background_brush);
+				DeleteObject(background_brush);
 
         HBRUSH brush = CreateSolidBrush(ball.color);
         SelectObject(hdc, brush);
