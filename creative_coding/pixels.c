@@ -18,21 +18,26 @@ void draw_line(HDC hdc, int x1, int y1, int x2, int y2, COLORREF color) {
     }
 }
 
+void draw_fractal_tree(HDC hdc, int x1, int y1, float angle, int depth) {
+    if (depth == 0) return;
+
+    int x2 = x1 + (int)(cos(angle) * depth * 10.0);
+    int y2 = y1 + (int)(sin(angle) * depth * 10.0);
+
+    draw_line(hdc, x1, y1, x2, y2, RGB(0, 255 / (depth + 1), 0));
+
+    draw_fractal_tree(hdc, x2, y2, angle - 0.5, depth - 1);
+    draw_fractal_tree(hdc, x2, y2, angle + 0.5, depth - 1);
+}
+
 int main() {
     int width = 800;
     int height = 600;
     HDC hdc = GetDC(NULL);
-    int x1, y1, x2, y2;
 
-    for (int i = 0; i < 100; i++) {
-        x1 = rand() % width;
-        y1 = rand() % height;
-        x2 = rand() % width;
-        y2 = rand() % height;
-        draw_line(hdc, x1, y1, x2, y2, RGB(rand() % 256, rand() % 256, rand() % 256));
-        Sleep(50);
-    }
+    draw_fractal_tree(hdc, width / 2, height, -3.14 / 2, 10);
 
     ReleaseDC(NULL, hdc);
+    getchar();
     return 0;
 }
