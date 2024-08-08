@@ -28,9 +28,11 @@ int process_file(char *input_file, char *output_file, char *key, int encrypt) {
     char buffer[BUFFER_SIZE];
     DWORD bytes_read, bytes_written;
     LARGE_INTEGER file_size, progress;
+    DWORD start_time, end_time;
 
     GetFileSizeEx(h_input, &file_size);
     progress.QuadPart = 0;
+    start_time = GetTickCount();
 
     while (ReadFile(h_input, buffer, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
         if (encrypt) {
@@ -46,9 +48,16 @@ int process_file(char *input_file, char *output_file, char *key, int encrypt) {
         printf("\rProgress: %.2f%%", (double)progress.QuadPart / file_size.QuadPart * 100);
     }
 
+    end_time = GetTickCount();
     CloseHandle(h_input);
     CloseHandle(h_output);
+
+    double elapsed_time = (end_time - start_time) / 1000.0;
+    double speed = file_size.QuadPart / (1024.0 * 1024.0) / elapsed_time;
+
     printf("\nFile %s successfully\n", encrypt ? "encrypted" : "decrypted");
+    printf("Time elapsed: %.2f seconds\n", elapsed_time);
+    printf("Processing speed: %.2f MB/s\n", speed);
     return 0;
 }
 
