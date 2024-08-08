@@ -9,15 +9,7 @@ void xor_encrypt(char *data, int data_len, char *key, int key_len) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: %s <input_file> <output_file> <key>\n", argv[0]);
-        return 1;
-    }
-
-    char *input_file = argv[1];
-    char *output_file = argv[2];
-    char *key = argv[3];
+int encrypt_file(char *input_file, char *output_file, char *key) {
     int key_len = strlen(key);
 
     HANDLE h_input = CreateFile(input_file, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -56,4 +48,13 @@ int main(int argc, char *argv[]) {
     CloseHandle(h_output);
     printf("\nFile encrypted successfully\n");
     return 0;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 4) {
+        printf("Usage: %s <input_file> <output_file> <key>\n", argv[0]);
+        return 1;
+    }
+
+    return encrypt_file(argv[1], argv[2], argv[3]);
 }
