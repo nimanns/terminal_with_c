@@ -35,6 +35,10 @@ int main(int argc, char *argv[]) {
 
     char buffer[BUFFER_SIZE];
     DWORD bytes_read, bytes_written;
+    LARGE_INTEGER file_size, progress;
+
+    GetFileSizeEx(h_input, &file_size);
+    progress.QuadPart = 0;
 
     while (ReadFile(h_input, buffer, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
         xor_encrypt(buffer, bytes_read, key, key_len);
@@ -44,10 +48,12 @@ int main(int argc, char *argv[]) {
             CloseHandle(h_output);
             return 1;
         }
+        progress.QuadPart += bytes_read;
+        printf("\rProgress: %.2f%%", (double)progress.QuadPart / file_size.QuadPart * 100);
     }
 
     CloseHandle(h_input);
     CloseHandle(h_output);
-    printf("File encrypted successfully\n");
+    printf("\nFile encrypted successfully\n");
     return 0;
 }
