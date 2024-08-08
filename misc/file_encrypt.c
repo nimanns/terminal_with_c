@@ -9,7 +9,7 @@ void xor_encrypt(char *data, int data_len, char *key, int key_len) {
     }
 }
 
-int encrypt_file(char *input_file, char *output_file, char *key) {
+int process_file(char *input_file, char *output_file, char *key, int encrypt) {
     int key_len = strlen(key);
 
     HANDLE h_input = CreateFile(input_file, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -33,7 +33,9 @@ int encrypt_file(char *input_file, char *output_file, char *key) {
     progress.QuadPart = 0;
 
     while (ReadFile(h_input, buffer, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
-        xor_encrypt(buffer, bytes_read, key, key_len);
+        if (encrypt) {
+            xor_encrypt(buffer, bytes_read, key, key_len);
+        }
         if (!WriteFile(h_output, buffer, bytes_read, &bytes_written, NULL) || bytes_written != bytes_read) {
             printf("Error writing to output file\n");
             CloseHandle(h_input);
@@ -46,15 +48,16 @@ int encrypt_file(char *input_file, char *output_file, char *key) {
 
     CloseHandle(h_input);
     CloseHandle(h_output);
-    printf("\nFile encrypted successfully\n");
+    printf("\nFile %s successfully\n", encrypt ? "encrypted" : "decrypted");
     return 0;
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: %s <input_file> <output_file> <key>\n", argv[0]);
+    if (argc != 5) {
+        printf("Usage: %s <e|d> <input_file> <output_file> <key>\n", argv[0]);
         return 1;
     }
 
-    return encrypt_file(argv[1], argv[2], argv[3]);
+    int encrypt = argv[1][0] == 'e';
+    return process_file(argv[2], argv[3], argv[4], encrypt);
 }
